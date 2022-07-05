@@ -5,7 +5,6 @@
 /// <https://docs.substrate.io/v3/runtime/frame>
 pub use pallet::*;
 
-
 #[cfg(test)]
 mod mock;
 
@@ -19,11 +18,10 @@ mod benchmarking;
 pub mod pallet {
 	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
-	use sp_std::vec::Vec;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_primes::Config {
+	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 	}
@@ -32,22 +30,14 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
+	// The pallet's runtime storage items.
+	// https://docs.substrate.io/v3/runtime/storage
 	#[pallet::storage]
-	#[pallet::getter(fn target)]
-	pub type Target<T> = StorageValue<_, u64, ValueQuery>;
+	#[pallet::getter(fn fizzbuzz)]
+	// Learn more about declaring storage items:
+	// https://docs.substrate.io/v3/runtime/storage#declaring-storage-items
+	pub type FizzBuzz<T> = StorageValue<_, u32, ValueQuery>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn remaining)]
-	pub type Remaining<T> = StorageValue<_, u64, ValueQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn factors)]
-	pub(super) type Factors<T: Config> = StorageValue<_, Vec<u64>, ValueQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn worker_running)]
-
-	/*
 	#[pallet::type_value]
 	pub(super) fn DefaultNext<T: Config>() -> u32 { 1 }
 	#[pallet::storage]
@@ -62,9 +52,8 @@ pub mod pallet {
 	pub struct GenesisConfig {
 		pub init_next: u32,
 		pub init_limit: u32,
-	}*/
+	}
 
-	/*
 	#[cfg(feature = "std")]
 	impl Default for GenesisConfig {
 		fn default() -> Self {
@@ -79,19 +68,8 @@ pub mod pallet {
 			Limit::<T>::put(self.init_limit);
 		}
 	}
-	*/
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		fn offchain_worker(block_number: T::BlockNumber) {
-			let res = Self::entry();
-			if let  Err(e) = res {
-				log::error!("Error: {}", e);
-			}
-		}
-	}
 
-	/*
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
@@ -110,7 +88,6 @@ pub mod pallet {
 			}
 		}
 	}
-	*/
 
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/v3/runtime/events-and-errors
@@ -123,7 +100,6 @@ pub mod pallet {
 		NextOverflow(u32, T::AccountId),
 	}
 
-	/*
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
@@ -133,74 +109,21 @@ pub mod pallet {
 		/// Errors should have helpful documentation associated with them.
 		StorageOverflow,
 	}
-	*/
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
 	// These functions materialize as "extrinsics", which are often compared to transactions.
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 
-	impl<T: Config> Pallet<T> {
-		fn entry() -> Result<(), &'static str> {
-			if target() < 2 {
-				Ok(())
-			}
-
-			if remaining() == 1 {
-				Ok(())
-			}
-
-
-
-			let signer = Signer::<T, T::AuthorityId>::all_accounts();
-			if !signer.can_sign() {
-				return Err(
-					"No local accounts :("
-				)
-			}
-			log::info!("prime start");
-
-			let prime = Self::find_next_prime();
-			log::info!("prime {:?}", prime);
-
-			let results = signer.send_signed_transaction(|_account| {
-				Call::submit_prime_signed { prime }
-			});
-
-
-			/*
-			for (acc, res) in &results {
-				match res {
-					Ok(()) => log::info!("[{:?}] Submitted price of {} cents", acc.id, price),
-					Err(e) => log::error!("[{:?}] Failed to submit transaction {:?}", acc.id, e),
-				}
-			}
-			*/
-
-			Ok(())
-		}
-
-	}
-
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-		pub fn set_target(origin: OriginFor<T>, new_target: u64) -> DispatchResult {
-			let _who = ensure_signed(origin)?;
+		pub fn set_limit(origin: OriginFor<T>, lim: u32) -> DispatchResult {
+			let who = ensure_signed(origin)?;
 
-			let current_target = <Target<T>>::get();
-
-			match new_target {
-				nt if nt == current_target => (),
-				nt if nt < 2 => (),
-				nt =>
-				{
-					<Target<T>>::set(nt);
-					<Remaining<T>>::set(nt);
-					<Factors<T>>::mutate(|facs| {
-						facs.clear()
-					})
-				},
+			match <Limit<T>>::get() {
+				cur if cur < lim => <Limit<T>>::set(lim),
+				i => ()
 			}
 
 			Ok(())

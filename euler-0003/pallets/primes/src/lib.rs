@@ -92,9 +92,12 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	#[pallet::getter(fn primies)]
+	#[pallet::getter(fn primes)]
 	pub(super) type Primes<T: Config> = StorageValue<_, Vec<u64>, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn largest_prime)]
+	pub(super) type LargestPrime<T: Config> = StorageValue<_, u64, ValueQuery>;
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
@@ -214,8 +217,8 @@ pub mod pallet {
 			}
 
 			log::info!("Added prime {:?}", prime);
-			<Primes<T>>::mutate(|primes| {
-				primes.push(prime)
+			<Primes<T>>::mutate(|ps| {
+				ps.push(prime)
 			})
 		}
 	}
